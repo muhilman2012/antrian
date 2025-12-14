@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('number');
             $table->string('name');
+            $table->string('category')->default('rontgen');
             $table->text('details')->nullable();
             $table->enum('status', ['waiting', 'called', 'completed'])->default('waiting');
             $table->timestamps();

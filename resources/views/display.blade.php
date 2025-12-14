@@ -1,144 +1,192 @@
-@extends('layouts.app')
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+    <title>Layar Antrian</title>
+    
+    <link rel="icon" href="{{ asset('logo/setneg.png') }}" type="image/x-icon"/>
+    <link rel="shortcut icon" href="{{ asset('logo/setneg.png') }}" type="image/x-icon"/>
 
-@section('content')
-<div id="start-overlay" style="position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; color: white;">
-    <h1 class="mb-4">Display Antrian Siap</h1>
-    <button id="btn-start" class="btn btn-primary btn-lg" style="font-size: 2rem; padding: 20px 60px;">
-        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-microphone" width="40" height="40" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><rect x="5" y="2" width="14" height="16" rx="3" /><line x1="8" y1="23" x2="16" y2="23" /><line x1="12" y1="17" x2="12" y2="23" /><path d="M19 10v2a7 7 0 0 1 -14 0v-2" /></svg>
-        AKTIFKAN SUARA
-    </button>
-</div>
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler.min.css" rel="stylesheet"/>
+    <style>
+      body { background-color: #f4f6fa; overflow: hidden; }
+      .page-center { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+      
+      .big-number { font-size: 8rem; font-weight: bold; line-height: 1; color: #206bc4; }
+      .category-badge { font-size: 2rem; margin-bottom: 1rem; }
+      
+      .history-card { height: 90vh; overflow: hidden; }
+      .history-item { border-bottom: 1px solid #e6e8e9; padding: 15px; }
+      .history-number { font-size: 1.5rem; font-weight: bold; }
 
-<div class="page page-center">
-    <div class="container container-tight py-4">
-        <div class="text-center mb-4">
-            <h1>ANTRIAN RONTGEN</h1>
-        </div>
-        <div class="card card-md text-center py-5" style="border: 3px solid #206bc4; min-height: 400px;">
-            <div class="card-body d-flex flex-column justify-content-center align-items-center">
-                
-                <div id="queue-content" style="display: none;">
-                    <div class="text-muted text-uppercase font-weight-bold">Nomor Antrian Rontgen</div>
-                    <div class="display-1 fw-bold text-primary" style="font-size: 8rem;" id="display-number">
-                        -
-                    </div>
-                    <h2 class="mt-4" id="display-name">-</h2>
-                    <p class="text-muted" id="display-details">-</p>
-                </div>
+      /* OVERLAY WAJIB (Agar suara diizinkan browser) */
+      #start-overlay {
+          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+          background: rgba(32, 107, 196, 0.95); z-index: 9999;
+          display: flex; justify-content: center; align-items: center;
+          color: white; flex-direction: column; cursor: pointer; text-align: center;
+      }
+    </style>
+  </head>
+  <body>
 
-                <div id="queue-empty">
-                    <h2 class="text-muted">Menunggu Panggilan...</h2>
-                    <div class="spinner-border text-primary mt-3" role="status"></div>
-                </div>
-
-                </div>
-        </div>
+    <div id="start-overlay" onclick="startApp()">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-player-play" width="64" height="64" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 4v16l13 -8z" /></svg>
+        <h1 class="mt-3">Klik Layar Untuk Mengaktifkan Suara</h1>
+        <p class="fs-3">Sistem menggunakan suara bawaan Windows</p>
     </div>
-</div>
 
-<script>
-    let lastPlayedId = null; 
-    const synth = window.speechSynthesis;
-    let voices = [];
-
-    // Load voices
-    function loadVoices() {
-        voices = synth.getVoices();
-    }
-    loadVoices();
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = loadVoices;
-    }
-
-    // 1. Tombol Start
-    document.getElementById('btn-start').addEventListener('click', function() {
-        // Pancing TTS agar aktif
-        synth.speak(new SpeechSynthesisUtterance(""));
-        document.getElementById('start-overlay').style.display = 'none';
-        startPolling();
-    });
-
-    // 2. Polling Data (DIPERCEPAT jadi 1000ms / 1 detik)
-    function startPolling() {
-        setInterval(function() {
-            fetch("{{ route('api.queue') }}")
-                .then(response => response.json())
-                .then(result => {
-                    updateDisplay(result.data);
-                })
-                .catch(err => console.error(err));
-        }, 1000); 
-    }
-
-    // 3. Update Display
-    function updateDisplay(data) {
-        const contentDiv = document.getElementById('queue-content');
-        const emptyDiv = document.getElementById('queue-empty');
-
-        if (data) {
-            emptyDiv.style.display = 'none';
-            contentDiv.style.display = 'block';
-
-            document.getElementById('display-number').innerText = data.number;
-            document.getElementById('display-name').innerText = data.name;
-            document.getElementById('display-details').innerText = data.details || '';
-
-            if (lastPlayedId !== data.id) {
-                lastPlayedId = data.id;
+    <div class="page page-center">
+      <div class="container-fluid py-4">
+        <div class="row align-items-center">
+          
+          <div class="col-lg-8">
+            <div class="card card-md shadow-lg" style="min-height: 80vh; justify-content: center;">
+              <div class="card-body text-center">
                 
-                // Hentikan suara sebelumnya (jika ada) agar tidak tabrakan
-                synth.cancel();
+                <img src="{{ asset('logo/setneg.png') }}" width="80" class="mb-3">
                 
-                // Langsung bicara (Tanpa nunggu ting tung)
-                speakIndonesian(data.number, data.name);
-            }
+                <h1 class="text-muted text-uppercase mb-4" style="letter-spacing: 2px;">Nomor Antrian</h1>
+                
+                <div id="category-badge" class="badge bg-blue-lt category-badge d-none">
+                  KATEGORI
+                </div>
 
-        } else {
-            contentDiv.style.display = 'none';
-            emptyDiv.style.display = 'block';
-        }
-    }
+                <div id="queue-number" class="big-number">---</div>
+                
+                <div class="mt-4">
+                  <h2 id="queue-name" class="h1 text-dark">Menunggu...</h2>
+                  <p id="queue-details" class="text-muted fs-2"></p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-    // 4. Logic Bicara Cepat
-    function speakIndonesian(numberRaw, nameRaw) {
-        // Ejaan Angka Manual (Tetap dipakai agar "Zero" jadi "Kosong")
-        let numberString = numberRaw.toString().toUpperCase();
-        let spelledNumber = "";
+          <div class="col-lg-4">
+            <div class="card history-card shadow-sm">
+              <div class="card-header bg-primary text-white">
+                <h3 class="card-title mb-0">Riwayat Panggilan</h3>
+              </div>
+              <div class="card-body p-0" id="history-list">
+                <div class="p-4 text-center text-muted">Belum ada riwayat.</div>
+              </div>
+            </div>
+          </div>
 
-        const mapAngka = {
-            '0': 'Kosong', 
-            '1': 'Satu', '2': 'Dua', '3': 'Tiga', '4': 'Empat',
-            '5': 'Lima', '6': 'Enam', '7': 'Tujuh', '8': 'Delapan', '9': 'Sembilan',
-            '-': ' ' 
-        };
+        </div>
+      </div>
+    </div>
 
-        for (let char of numberString) {
-            if (mapAngka[char]) {
-                spelledNumber += mapAngka[char] + " "; // Spasi biasa, bukan titik
+    <script>
+      // Kita ganti variabel pelacak dari ID menjadi WAKTU
+      let lastUpdated = null; 
+      let isAudioEnabled = false; 
+
+      function startApp() {
+          document.getElementById('start-overlay').style.display = 'none';
+          isAudioEnabled = true;
+          speak("Sistem Antrian Aktif");
+      }
+
+      function updateDisplay() {
+        fetch("{{ route('api.current.queue') }}")
+          .then(response => response.json())
+          .then(res => {
+            const data = res.data;
+            
+            if (data) {
+              // Update Tampilan Teks
+              document.getElementById('queue-number').innerText = data.number;
+              document.getElementById('queue-name').innerText = data.name;
+              document.getElementById('queue-details').innerText = data.category === 'hpv' ? 'Pemeriksaan HPV' : 'Pemeriksaan Rontgen';
+              
+              const badge = document.getElementById('category-badge');
+              badge.classList.remove('d-none');
+              badge.innerText = data.category.toUpperCase();
+              badge.className = data.category === 'hpv' 
+                  ? 'badge bg-purple-lt category-badge' 
+                  : 'badge bg-blue-lt category-badge';
+
+              // --- LOGIKA BARU UNTUK SUARA (PANGGIL ULANG) ---
+              // Kita cek: Apakah WAKTU update berubah? 
+              // Jika Admin klik Panggil Ulang, updated_at di database berubah, 
+              // maka kondisi ini akan TRUE meskipun ID-nya sama.
+              if (lastUpdated !== data.updated_at) {
+                lastUpdated = data.updated_at; // Simpan waktu terbaru
+                
+                if(isAudioEnabled) {
+                    processSpeech(data.number);
+                }
+              }
+
             } else {
-                spelledNumber += char + " "; 
+              // Jika Antrian Kosong / Istirahat
+              document.getElementById('queue-number').innerText = "---";
+              document.getElementById('queue-name').innerText = "Silakan Tunggu";
+              document.getElementById('category-badge').classList.add('d-none');
+              
+              // Reset pelacak agar kalau antrian muncul lagi, dia bunyi
+              lastUpdated = null; 
             }
-        }
 
-        // Kalimat dibuat lebih pendek jedanya
-        let textToSpeak = `Nomor Antrian ${spelledNumber}. Atas nama ${nameRaw}. Silakan Masuk.`;
+            // UPDATE RIWAYAT (Sama seperti sebelumnya)
+            const historyList = document.getElementById('history-list');
+            if (res.history.length > 0) {
+                let html = '';
+                res.history.forEach(item => {
+                    const color = item.category === 'hpv' ? 'bg-purple-lt' : 'bg-blue-lt';
+                    const catName = item.category === 'hpv' ? 'HPV' : 'Rontgen';
+                    html += `
+                    <div class="history-item d-flex justify-content-between align-items-center animate__animated animate__fadeIn">
+                        <div>
+                            <span class="badge ${color} mb-1">${catName}</span>
+                            <div class="history-number text-dark">${item.number}</div>
+                        </div>
+                        <div class="text-end text-muted">
+                           <div class="small text-truncate" style="max-width: 150px;">${item.name}</div>
+                           <small>Selesai</small>
+                        </div>
+                    </div>`;
+                });
+                historyList.innerHTML = html;
+            }
+          })
+          .catch(err => console.error(err));
+      }
 
-        let utterance = new SpeechSynthesisUtterance(textToSpeak);
-        
-        // Cari suara Indo
-        let indoVoice = voices.find(v => v.lang.includes('id-ID') || v.name.includes('Indonesia'));
-        if (indoVoice) {
-            utterance.voice = indoVoice;
-            utterance.lang = 'id-ID';
-        }
+      function processSpeech(numberString) {
+          const parts = numberString.split('-'); 
+          const huruf = parts[0]; 
+          const angkaRaw = parseInt(parts[1]); 
 
-        // KECEPATAN BICARA
-        // 1 = Normal, > 1 = Cepat
-        utterance.rate = 1.0; 
-        utterance.volume = 1;
-        utterance.pitch = 1;
+          let angkaBaca = angkaRaw;
+          if(angkaRaw < 10) {
+              angkaBaca = "Kosong Kosong " + angkaRaw;
+          } else if (angkaRaw < 100) {
+              angkaBaca = "Kosong " + angkaRaw;
+          }
 
-        synth.speak(utterance);
-    }
-</script>
-@endsection
+          // Tambahkan kata "Panggilan Ulang" jika perlu, atau biarkan standar
+          const kalimat = `Nomor Antrian... ${huruf}... ${angkaBaca}... Silakan masuk.`;
+          
+          speak(kalimat);
+      }
+
+      function speak(text) {
+          if ('speechSynthesis' in window) {
+              window.speechSynthesis.cancel(); 
+              const msg = new SpeechSynthesisUtterance(text);
+              msg.lang = 'id-ID'; 
+              msg.rate = 0.85;    
+              msg.pitch = 1;
+              msg.volume = 1;
+              window.speechSynthesis.speak(msg);
+          }
+      }
+
+      setInterval(updateDisplay, 3000);
+      updateDisplay();
+    </script>
+  </body>
+</html>
