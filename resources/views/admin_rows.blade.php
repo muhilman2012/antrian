@@ -81,7 +81,7 @@
 </div>
 
 <div class="mt-4">
-    <h3 class="card-title">Riwayat Panggilan Terakhir (5 Terakhir)</h3>
+    <h3 class="card-title">Riwayat Panggilan Terakhir</h3>
     <div class="table-responsive">
         <table class="table card-table table-vcenter text-nowrap">
             <thead>

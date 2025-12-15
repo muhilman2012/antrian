@@ -79,7 +79,6 @@
     </div>
 
     <script>
-      // Kita ganti variabel pelacak dari ID menjadi WAKTU
       let lastUpdated = null; 
       let isAudioEnabled = false; 
 
@@ -108,29 +107,25 @@
                   ? 'badge bg-purple-lt category-badge' 
                   : 'badge bg-blue-lt category-badge';
 
-              // --- LOGIKA BARU UNTUK SUARA (PANGGIL ULANG) ---
-              // Kita cek: Apakah WAKTU update berubah? 
-              // Jika Admin klik Panggil Ulang, updated_at di database berubah, 
-              // maka kondisi ini akan TRUE meskipun ID-nya sama.
+              // LOGIKA SUARA
               if (lastUpdated !== data.updated_at) {
-                lastUpdated = data.updated_at; // Simpan waktu terbaru
+                lastUpdated = data.updated_at; 
                 
                 if(isAudioEnabled) {
-                    processSpeech(data.number);
+                    // --- PERHATIKAN BARIS INI ---
+                    // Pastikan yang dikirim adalah 'data', BUKAN 'data.number'
+                    processSpeech(data); 
                 }
               }
 
             } else {
-              // Jika Antrian Kosong / Istirahat
               document.getElementById('queue-number').innerText = "---";
               document.getElementById('queue-name').innerText = "Silakan Tunggu";
               document.getElementById('category-badge').classList.add('d-none');
-              
-              // Reset pelacak agar kalau antrian muncul lagi, dia bunyi
               lastUpdated = null; 
             }
 
-            // UPDATE RIWAYAT (Sama seperti sebelumnya)
+            // UPDATE RIWAYAT
             const historyList = document.getElementById('history-list');
             if (res.history.length > 0) {
                 let html = '';
@@ -155,8 +150,13 @@
           .catch(err => console.error(err));
       }
 
-      function processSpeech(numberString) {
-          const parts = numberString.split('-'); 
+      function processSpeech(data) {
+          // DEBUGGING: Cek di Console Browser (Tekan F12 -> Console)
+          console.log("Data diterima:", data);
+          console.log("Nama Asli:", data.name);
+
+          // 1. OLAH NOMOR
+          const parts = data.number.split('-'); 
           const huruf = parts[0]; 
           const angkaRaw = parseInt(parts[1]); 
 
@@ -167,9 +167,29 @@
               angkaBaca = "Kosong " + angkaRaw;
           }
 
-          // Tambahkan kata "Panggilan Ulang" jika perlu, atau biarkan standar
-          const kalimat = `Nomor Antrian... ${huruf}... ${angkaBaca}... Silakan masuk.`;
+          // 2. OLAH NAMA KHUSUS RILLO
+          // default gunakan nama asli
+          let namaPanggilan = data.name; 
           
+          // Cek apakah mengandung kata "rillo" (huruf besar/kecil tidak masalah)
+          if (data.name.toLowerCase().includes('rillo')) {
+              console.log("Nama Spesial Terdeteksi!"); // Cek console
+              // Saya tambah koma (,) agar suara robot memberi jeda sedikit
+              namaPanggilan = "King, " + data.name; 
+          }
+
+          // 3. OLAH LOKASI
+          let lokasi = "Silakan masuk"; 
+          if (data.category === 'rontgen') {
+              lokasi = "Silakan menuju Mobil Ronsen";
+          } else if (data.category === 'hpv') {
+              lokasi = "Silakan menuju Poli Klinik";
+          }
+
+          // 4. SUSUN KALIMAT
+          const kalimat = `Nomor Antrian... ${huruf}... ${angkaBaca}... Atas nama... ${namaPanggilan}... ${lokasi}`;
+          
+          console.log("Kalimat yang dibaca:", kalimat); // Cek console untuk memastikan teksnya benar
           speak(kalimat);
       }
 
@@ -178,7 +198,7 @@
               window.speechSynthesis.cancel(); 
               const msg = new SpeechSynthesisUtterance(text);
               msg.lang = 'id-ID'; 
-              msg.rate = 0.85;    
+              msg.rate = 0.85; 
               msg.pitch = 1;
               msg.volume = 1;
               window.speechSynthesis.speak(msg);
