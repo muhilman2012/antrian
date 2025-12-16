@@ -172,10 +172,10 @@
           let namaPanggilan = data.name; 
           
           // Cek apakah mengandung kata "rillo" (huruf besar/kecil tidak masalah)
-          if (data.name.toLowerCase().includes('rillo')) {
+          if (data.name.toLowerCase().includes('ergy')) {
               console.log("Nama Spesial Terdeteksi!"); // Cek console
               // Saya tambah koma (,) agar suara robot memberi jeda sedikit
-              namaPanggilan = "King, " + data.name; 
+              namaPanggilan = "Ketua, " + data.name; 
           }
 
           // 3. OLAH LOKASI
